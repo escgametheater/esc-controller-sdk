@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Camera filter test</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.4.21.6.js"></script>
+    <script>
+        function publish(connection, channel, message) {
+            connection.publish({channel: channel, message: message}, function(status, response) {
+                //console.log(status, response);
+            });
+        }
+        function createPublisher() {
+            const pubnub = new PubNub({
+                publishKey : 'pub-c-b5184746-a1d8-4189-b45b-c33aee8785f6',
+                subscribeKey : 'sub-c-a5894506-e1f0-11e8-a197-eed1401c575e'
+            });
+            pubnub.addListener({
+                status: function(statusEvent) {
+                    if (statusEvent.category === "PNConnectedCategory") {
+                        // Do something when connected
+                    }
+                },
+                message: function(msg) {
+                    console.log("Message received: ",msg);
+                },
+                presence: function(presenceEvent) {
+                    console.log("presence message",presenceEvent);
+                }
+            });
+//            console.log("Subscribing..");
+//            pubnub.subscribe({
+//                channels: ['counter','countSummary']
+//            });
+            return pubnub ;
+        }
+        let publisher = createPublisher();
+
+    </script>
+    <script src="cameraCommon.js?v=1"></script>
+    <script src="camera.js?v=1"></script>
+</head>
+<body style="margin: 0px">
+<!--
+<div style="width:2em;height:2em; line-height: 1em"  id="dynamicid">
+    <span id="dynamicid0" style="background-color:red; width:2em;height:2em">&emsp;</span><span id="dynamicid1" style="background-color:green; width:2em;height:2em">&emsp;</span><br>
+    <span id="dynamicid2" style="background-color:blue; width:2em;height:2em">&emsp;</span><span id="dynamicid3" style="background-color:magenta; width:2em;height:2em">&emsp;</span>
+</div>
+-->
+<div id="inputDiv" style="height:100vh; width:100vw; position:fixed; top:0; left:0;">
+    <div id="scanning">Scanning... please aim your camera at the screen to join.</div>
+    <div id="holdStill">Please aim camera at screen and hold still.</div>
+    <canvas id="canvas2d" style="position:absolute; z-index:9999"> </canvas>
+    <canvas id="canvas2d2" style="position:absolute; z-index:9999"> </canvas>
+    <div id="infoOverlay"> Overlay </div>
+    <div style="background-color: black">
+        <img id="filterInput" onload="imageLoaded();" src="esc-logo-web-small.png" style="position:fixed; top:5%; left:0; height:90%; background-color: black; width:100%"/>
+    </div>
+</div>
+<!-- img id="featureImage" onload="loadFeaturePixels(this);" src="logo-r5x10.png" / -->
+<p>
+<button id="freezeCamera" style="position: fixed; z-index: 10000; width:25vh; height:25vh; top:12vh; right:0vh; font-size:1.5em">Freeze camera</button>
+<button id="openCamera" style="position: fixed; z-index: 10000; width:25vh; height:25vh; top:63vh; left:0vh; font-size:1.5em">Rescan for target</button>
+<button id="fireButton" style="position: fixed; z-index: 10000; width:25vh; height:25vh; top:63vh; right:0vh; font-size:1.5em">Throw a kiss</button>
+<span onclick="adjustPixelSizeAndRender(1/1.1)" style="font-size: 2em">Decrease kernel size</span>
+<span onclick="adjustPixelSizeAndRender(1.1)" style="font-size: 2em; float: right">Increase kernel size</span>
+<br>
+<div id="debug" style="position:fixed; top:35%; left:35%"></div>
+<p>
+
+<div>
+    <canvas id="outputCanvas" style="background-color: #000000"> </canvas>
+</div>
+
+</body>
+<script>
+
+
+    let camera = false ;
+    document.querySelector('#openCamera').addEventListener('click', e => {
+        const scanningElem = document.getElementById("scanning");
+        if (scanningElem) {
+            scanningElem.style.visibility = "visible" ;
+        }
+        const holdStillElement = document.getElementById("holdStill");
+        if (holdStillElement) {
+            holdStillElement.style.visibility = "hidden";
+        }
+
+        if (!camera) {
+            openCamera();
+        }
+        else {
+            rescanCamera();
+        }
+        //e.target.style.visibility = "hidden";
+    });
+
+    const freezeButton = document.querySelector('#freezeCamera') ;
+    freezeButton.addEventListener('click', () => {
+        if (filter.frozen) {
+            unfreezeCamera();
+            freezeButton.innerHTML = "Freeze Camera" ;
+        } else {
+            freezeCamera();
+            freezeButton.innerHTML = "Unfreeze Camera" ;
+        }
+    });
+
+    document.querySelector('#fireButton').addEventListener('click', e => {
+
+        const message = {
+            event: "fireButton",
+            screenCount: screenCount,
+            x:filter.targetX,
+            y:filter.targetY,
+            size:filter.pixelW*camera.width
+        };
+        console.log(`fireButton pressed, publishing to channel ${channel},`,message);
+        publish(publisher,channel,message);
+    });
+
+
+    /*
+        const dynamicIdElem = document.getElementById("dynamicid");
+        let dynamicIdIndex = 0 ;
+        function dynamicIdUpdater() {
+            dynamicIdIndex = (dynamicIdIndex + 1) % 4;
+            //dynamicIdElem.style.backgroundColor = dynamicIdColors[dynamicIdIndex];
+            dynamicIdElem.style.transform = "rotate("+90*dynamicIdIndex + "deg)";
+            window.setTimeout(dynamicIdUpdater,250);
+            //window.requestAnimationFrame(dynamicIdUpdater);
+        }
+
+        dynamicIdUpdater();
+    */
+    function imageLoaded() {
+        imageIsLoaded = true ;
+        if (filterIsLoaded && featureToMatch.loaded && filter.frameCount === 0) {
+//            filter.renderImage();
+//            for (var i = 0 ; i < 30 ; i++) {
+//                adjustPixelSizeAndRender(1.05);
+//            }
+        }
+    }
+
+    function adjustCanvasWidth(x) {
+        canvasWidth += x ;
+        changeCanvasSize(canvasWidth);
+    }
+    function adjustPixelSize(f) {
+        filter.setPixelSize(filter.pixelW*f,filter.pixelH*f);
+    }
+    function adjustPixelSizeAndRender(f) {
+        adjustPixelSize(f);
+        filter.renderImage();
+    }
+    function changeCanvasSize(w) {
+
+        const h = Math.floor(w*height/width);
+        //canvas2d.width = w;
+        //canvas2d.height = h;
+        //outputElement.width = w ;
+        //outputElement.height = h ;
+        filter.gl.canvas.width = w ;
+        filter.gl.canvas.height = h ;
+
+        filter = new VideoFilter(w, h,flipHorizontally, 0, inputElement, outputElement, canvas2d);
+        //filter.changeSize(w,h);
+        console.log(outputElement);
+        filter.renderImage();
+        debugElement.innerText = "Canvas width changed to " + w ;
+
+    }
+    const debugElement = document.getElementById("debug");
+    let inputElement = document.getElementById("filterInput");
+    const outputElement = document.getElementById("outputCanvas");
+    const canvas2d = document.getElementById("canvas2d");
+    const canvas2d2 = document.getElementById("canvas2d2");
+    const inputDiv = document.getElementById("inputDiv");
+
+    function matchOutputElementToInputElement(inputElement,outputElement) {
+        const computedStyle = window.getComputedStyle(inputElement);
+        outputElement.style.width = computedStyle.width ;
+        outputElement.style.height = computedStyle.height ;
+        outputElement.width = inputElement.videoWidth;
+        outputElement.height = inputElement.videoHeight;
+    }
+    matchOutputElementToInputElement(inputElement,outputElement);
+    matchOutputElementToInputElement(inputElement,canvas2d);
+    matchOutputElementToInputElement(inputElement,canvas2d2);
+    matchOutputElementToInputElement(inputElement,inputDiv);
+
+
+    const width = inputElement.width ;
+    const height = inputElement.height ;
+    console.log("Width "+width+" height "+height);
+
+    let canvasWidth = 1280 ;
+    let canvasHeight = 720 ;
+    outputElement.width = canvasWidth;
+    outputElement.height = canvasHeight;
+    canvas2d.width = canvasWidth;
+    canvas2d.height = canvasHeight;
+    canvas2d2.width = canvasWidth;
+    canvas2d2.height = canvasHeight;
+
+    console.log("input",inputElement);
+    console.log("output canvas",outputElement);
+
+    const flipHorizontally = false ;
+
+/*
+    if (imageIsLoaded && featureToMatch.loaded  &&  filter && filter.frameCount === 0) {
+        filter.renderImage();
+        for (let i = 0 ; i < 30 ; i++) {
+            adjustPixelSizeAndRender(1.1);
+        }
+    }
+*/
+    filterIsLoaded = true ;
+    let channel = false ;
+    let screenCount = 0 ;
+    function openCamera(w,h) {
+        w = w || canvasWidth ;
+        h = h || canvasHeight ;
+        camera = new LiveCamera(w,h,function () {
+            const parentElem = document.getElementById("inputDiv");
+            parentElem.appendChild(camera.videoElem);
+            camera.videoElem.style.position = "absolute";
+            camera.videoElem.style.display = "";
+            camera.videoElem.style.zIndex = "999";
+            camera.videoElem.style.width="100%";
+            inputElement = camera.videoElem;
+            //inputElement.addEventListener('touchstart',touchHandler,false);
+            document.getElementById("inputDiv").ontouchstart = touchHandler;
+            document.getElementById("inputDiv").ontouchmove = touchHandler;
+
+            console.log("Camera loaded",inputElement);
+            filter.inputElem = camera.videoElem ;
+            matchOutputElementToInputElement(inputElement,outputElement);
+            matchOutputElementToInputElement(inputElement,canvas2d);
+            matchOutputElementToInputElement(inputElement,canvas2d2);
+
+            filter.onCodeReceived = function () {
+                const scanningElem = document.getElementById("scanning");
+                if (scanningElem) {
+                    scanningElem.style.visibility = "hidden" ;
+                }
+                const holdStillElement = document.getElementById("holdStill");
+                if (holdStillElement) {
+                    holdStillElement.style.visibility = "hidden";
+                }
+
+                const elem = document.getElementById("infoOverlay") ;
+                if (!elem)
+                    return ;
+                channel = filter.codeReceived % ChannelMax ;
+                screenCount = (filter.codeReceived - channel)/ChannelMax ;
+                publish(publisher,channel,{screenCount: screenCount, x:filter.max.x, y:filter.max.y, size:filter.pixelW*w});
+
+                elem.innerHTML = `Target at ${filter.max.x},${filter.max.y} v=${filter.max.v} pixelStep=${(filter.pixelW*w).toFixed(2)} frame=${filter.frameCount}
+        <br> code: ${filter.codeReceived} channel: ${channel} screenCount: ${screenCount}`;
+// Detecting time code
+//        elem.innerHTML = `Target at ${filter.max.x},${filter.max.y} v=${filter.max.v} pixelStep=${(filter.pixelW*w).toFixed(2)} frame=${filter.frameCount}
+//        <br> code: ${filter.codeReceived} time: ${ (new Date(partialTimeToTime(filter.codeReceived,32))).toJSON() }`;
+
+            };
+
+            filter.onCodeMissing = function() {
+                const holdStillElement = document.getElementById("holdStill");
+                if (holdStillElement) {
+                    holdStillElement.style.visibility = "hidden";
+                }
+
+                if (channel) {
+                    publish(publisher,channel,{screenCount: screenCount, x:filter.max.x, y:filter.max.y, size:filter.pixelW*w});
+                }
+
+            };
+
+            filter.onTargetNotFound = function () {
+                const holdStillElement = document.getElementById("holdStill");
+                if (holdStillElement) {
+                    holdStillElement.style.visibility = "visible";
+                }
+
+            };
+
+            setTimeout(function(){
+                findInitialTarget();
+            },1);
+
+        });
+    }
+
+    // *******************************************************************
+    // Tried these to solve canvas2d partial drawImage memory leak issue. Did not help
+    function swapCanvas2d(filter, canvas1, canvas2) {
+        const ctx = filter.canvas2d.getContext("2d");
+        ctx.clearRect(0,0,filter.drawingBufferWidth,filter.drawingBufferHeight);
+        if (filter.canvas2d === canvas1) {
+            filter.canvas2d = canvas2 ;
+            //canvas1.style.visibility = "hidden";
+            canvas2.style.visibility = "visible";
+        }
+        else {
+            filter.canvas2d = canvas1 ;
+            //canvas2.style.visibility = "hidden";
+            canvas1.style.visibility = "visible";
+        }
+    }
+    function cloneFilterCanvas2d(filter) {
+        const clone = filter.canvas2d.cloneNode();
+        const parent = filter.canvas2d.parentNode ;
+        const ctx = filter.canvas2d.getContext("2d");
+        ctx.clearRect(0,0,filter.drawingBufferWidth,filter.drawingBufferHeight);
+
+        filter.canvas2d.remove();
+        parent.appendChild(clone);
+        filter.canvas2d = clone ;
+    }
+/*
+    setInterval(function() {
+        console.log("cloning canvas");
+        swapCanvas2d(filter,canvas2d,canvas2d2);
+        //cloneFilterCanvas2d(filter);
+    }, 5000);
+*/
+// *******************************************************************
+
+    setupNewFilter();
+    openCamera();
+
+    let throttlePublish = false ;
+    const throttlePublishTimeMs = 100 ;
+
+    let scrollOnTouchStart = {x:0,y:0} ;
+
+    function touchHandler(e) {
+        if (channel) {
+            if (e.type !== 'touchstart' && throttlePublish) {
+                return ;
+            }
+            throttlePublish = true ;
+            setTimeout(()=> {
+               throttlePublish = false ;
+            }, throttlePublishTimeMs);
+            const touch = e.changedTouches[0] ;
+            const w = Math.max(window.screen.width,window.screen.height);
+            const h = Math.min(window.screen.width,window.screen.height);
+
+            let zoom = GetZoom();
+
+            if (e.type === 'touchstart') {
+                scrollOnTouchStart = {
+                    x: window.scrollX ,
+                    y: window.scrollY
+                };
+            }
+
+            const scrollAdjust = {
+                x: zoom > 1 ? 0 : scrollOnTouchStart.x,
+                y: zoom > 1 ? 0 : scrollOnTouchStart.y,
+            };
+
+            const touchPosition = {
+                // Using pageX & pageY because the menu bar may be visible or not
+                // (hence screenY will not reflect correct position on the camera image)
+                // and the page could be pinch-zoomed (only pageX/pageY reflects that).
+                // However, we have to subtract the scroll (at touchstart), as the fixed video won't be scrolled
+                // But, not if zoomed?
+                x: (touch.pageX-scrollAdjust.x)*camera.width/e.currentTarget.clientWidth,
+                y: (touch.pageY-scrollAdjust.y)*camera.height/e.currentTarget.clientHeight
+            };
+            debugElement.innerText = `scroll: ${window.scrollX},${window.scrollY}
+screen: ${touch.screenX},${touch.screenY}
+client: ${touch.clientX},${touch.clientY}
+page: ${touch.pageX},${touch.pageY}`;
+            const message = {
+                event: e.type,
+                touchPosition: touchPosition,
+                screenCount: screenCount,
+                x:filter.targetX,
+                y:filter.targetY,
+                size:filter.pixelW*camera.width
+            };
+            console.log(`Publishing to channel ${channel}, touch at ${touch.screenX},${touch.screenY}, target ${e.currentTarget.clientWidth}x${e.currentTarget.clientHeight}`,message);
+            publish(publisher,channel,message);
+
+        }
+
+    }
+
+
+</script>
+</html>

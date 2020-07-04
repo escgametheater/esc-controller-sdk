@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Code Block generator</title>
+    <script src="cameraCommon.js?v=1"></script>
+    <script src="colorCodes.js?v=1"></script>
+</head>
+<body style="background-color: #808080; font-size: 1em">
+<div id="colorBlocksCode" style="width:5em; height:5em; position:relative; background-color: #000000" data-color-blocks-code="1111"></div>
+Enter code:<br>
+<div style="width:6em;">
+    <input id="code" style="width:100%; font-size:1em;" onchange="setCode(document.getElementById('colorBlocksCode'),this.value);" />
+</div>
+</body>
+
+<script>
+    let fontSizeScale = 1.0 ;
+
+    function resizeCode(f) {
+        setFontSize(fontSizeScale * f) ;
+    }
+    function setFontSize(f) {
+        fontSizeScale = f ;
+        document.body.style.fontSize = fontSizeScale + "em";
+    }
+    document.addEventListener('keypress', (event) => {
+        console.log(event);
+        if (event.metaKey === true) {
+            return ;
+        }
+        if (event.key === "=") {
+            resizeCode(1.1);
+        }
+        else if (event.key === "-") {
+            resizeCode(1/1.1);
+        }
+        else if (event.key === "0") {
+            setFontSize(1);
+        }
+    });
+</script>
+</html>

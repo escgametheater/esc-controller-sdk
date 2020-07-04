@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Camera filter test</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+
+    <script src="cameraCommon.js?v=1"></script>
+    <script src="camera.js?v=1"></script>
+</head>
+<body style="margin: 0px">
+<!--
+<div style="width:2em;height:2em; line-height: 1em"  id="dynamicid">
+    <span id="dynamicid0" style="background-color:red; width:2em;height:2em">&emsp;</span><span id="dynamicid1" style="background-color:green; width:2em;height:2em">&emsp;</span><br>
+    <span id="dynamicid2" style="background-color:blue; width:2em;height:2em">&emsp;</span><span id="dynamicid3" style="background-color:magenta; width:2em;height:2em">&emsp;</span>
+</div>
+-->
+<div id="inputDiv" style="height:100vh; width:100vw; position:fixed; top:0; left:0;">
+    <div id="scanning">Scanning... please aim your camera at the screen to join.</div>
+    <div id="holdStill">Please aim camera at screen and hold still.</div>
+    <canvas id="canvas2d" style="position:absolute; z-index:9999"> </canvas>
+    <canvas id="canvas2d2" style="position:absolute; z-index:9999"> </canvas>
+    <div id="infoOverlay"> Overlay </div>
+    <div style="background-color: black">
+        <img id="filterInput" src="esc-logo-web-small.png" style="position:fixed; top:5%; left:0; height:90%; background-color: black; width:100%"/>
+    </div>
+</div>
+<!-- img id="featureImage" onload="loadFeaturePixels(this);" src="logo-r5x10.png" / -->
+<p>
+<div id="debug"></div>
+<p><
+
+<div>
+    <canvas id="outputCanvas" style="background-color: #000000"> </canvas>
+</div>
+
+<div style="position:fixed; top:50%; left:50%">
+<button id="openGameButton" style="font-size: 2em; visibility: hidden; transform: translate(-50%,-50%); height:20vh; width:50vh;">Open screen</button>
+</div>
+
+</body>
+<script>
+
+
+    let camera = false ;
+
+    function adjustPixelSize(f) {
+        filter.setPixelSize(filter.pixelW*f,filter.pixelH*f);
+    }
+
+    const debugElement = document.getElementById("debug");
+    let inputElement = document.getElementById("filterInput");
+    const outputElement = document.getElementById("outputCanvas");
+    const canvas2d = document.getElementById("canvas2d");
+    const canvas2d2 = document.getElementById("canvas2d2");
+    const inputDiv = document.getElementById("inputDiv");
+
+    function matchOutputElementToInputElement(inputElement,outputElement) {
+        const computedStyle = window.getComputedStyle(inputElement);
+        outputElement.style.width = computedStyle.width ;
+        outputElement.style.height = computedStyle.height ;
+        outputElement.width = inputElement.videoWidth;
+        outputElement.height = inputElement.videoHeight;
+    }
+    matchOutputElementToInputElement(inputElement,outputElement);
+    matchOutputElementToInputElement(inputElement,canvas2d);
+    matchOutputElementToInputElement(inputElement,canvas2d2);
+    matchOutputElementToInputElement(inputElement,inputDiv);
+
+
+    const width = inputElement.width ;
+    const height = inputElement.height ;
+    console.log("Width "+width+" height "+height);
+
+    let canvasWidth = 1280 ;
+    let canvasHeight = 720 ;
+    outputElement.width = canvasWidth;
+    outputElement.height = canvasHeight;
+    canvas2d.width = canvasWidth;
+    canvas2d.height = canvasHeight;
+    canvas2d2.width = canvasWidth;
+    canvas2d2.height = canvasHeight;
+
+    console.log("input",inputElement);
+    console.log("output canvas",outputElement);
+
+    const flipHorizontally = false ;
+
+    filterIsLoaded = true ;
+    let channel = false ;
+    let screenCount = 0 ;
+    function openCamera(w,h) {
+        w = w || canvasWidth ;
+        h = h || canvasHeight ;
+        camera = new LiveCamera(w,h,function () {
+            const parentElem = document.getElementById("inputDiv");
+            parentElem.appendChild(camera.videoElem);
+            camera.videoElem.style.position = "absolute";
+            camera.videoElem.style.display = "";
+            camera.videoElem.style.zIndex = "999";
+            camera.videoElem.style.width="100%";
+            inputElement = camera.videoElem;
+
+            console.log("Camera loaded",inputElement);
+            filter.inputElem = camera.videoElem ;
+            matchOutputElementToInputElement(inputElement,outputElement);
+            matchOutputElementToInputElement(inputElement,canvas2d);
+            matchOutputElementToInputElement(inputElement,canvas2d2);
+
+            let reloadRefused = false ;
+
+            filter.onCodeReceived = function () {
+                if (!filter.codeReceived) {
+                    return ;
+                }
+                const scanningElem = document.getElementById("scanning");
+                if (scanningElem) {
+                    scanningElem.style.visibility = "hidden" ;
+                }
+                const holdStillElement = document.getElementById("holdStill");
+                if (holdStillElement) {
+                    holdStillElement.style.visibility = "hidden";
+                }
+
+                const newURL = "https://play.esc.games/i/" + filter.codeReceived + "/" ;
+                if (!reloadRefused) {
+                    if (confirm(`Game code found. Forwarding to
+`+newURL))
+                    {
+                        window.location = newURL ;
+                    }
+                    reloadRefused = true ;
+                }
+                const button = document.getElementById("openGameButton") ;
+                button.style.visibility = "visible" ;
+                button.innerHTML = "Open&nbsp;screen<br>" + filter.codeReceived ;
+                button.onclick = () => {
+                    window.location = newURL ;
+                };
+            };
+
+            filter.onCodeMissing = function() {
+                const holdStillElement = document.getElementById("holdStill");
+                if (holdStillElement) {
+                    holdStillElement.style.visibility = "hidden";
+                }
+            };
+
+            filter.onTargetNotFound = function () {
+                const holdStillElement = document.getElementById("holdStill");
+                if (holdStillElement) {
+                    holdStillElement.style.visibility = "visible";
+                }
+            };
+
+            setTimeout(function(){
+                findInitialTarget();
+            },1);
+
+        });
+    }
+
+// *******************************************************************
+
+    setupNewFilter();
+    openCamera();
+
+</script>
+</html>

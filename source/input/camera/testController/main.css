@@ -1,0 +1,37 @@
+
+#scanning {
+    position: fixed ;
+    top: 25% ;
+    left: 30% ;
+    right: 30% ;
+    font-size: 5vh;
+    background-color:#550000;
+    border-style: groove;
+    text-align: center;
+    z-index: 999999;
+    color: white;
+}
+
+#holdStill {
+    position: fixed ;
+    top: 25% ;
+    left: 30% ;
+    right: 30% ;
+    font-size: 5vh;
+    background-color:#444400;
+    border-style: groove;
+    text-align: center;
+    z-index: 999999;
+    color: white;
+    visibility: hidden;
+}
+
+#infoOverlay {
+    position:absolute;
+    left:40%;
+    top:10%;
+    font-size:1.5em;
+    z-index:99999;
+    background-color: #ffffff;
+    visibility: hidden;
+}

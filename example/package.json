@@ -1,0 +1,53 @@
+{
+  "name": "example",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@esc_games/esc-controller-sdk": "latest",
+    "ajv": "^6.5.2",
+    "react": "^16.4.1",
+    "react-dom": "^16.4.1",
+    "react-redux": "^5.0.7",
+    "react-scripts": "1.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  },
+  "babel": {
+    "plugins": [
+      "css-modules-transform",
+      [
+        "file-loader",
+        {
+          "name": "[hash].[ext]",
+          "extensions": [
+            "png",
+            "jpg",
+            "jpeg",
+            "gif",
+            "svg"
+          ],
+          "publicPath": "dist/static",
+          "outputPath": "dist/static",
+          "context": ""
+        }
+      ],
+      "transform-es2015-destructuring",
+      "transform-object-rest-spread",
+      [
+        "transform-runtime",
+        {
+          "polyfill": false,
+          "regenerator": true
+        }
+      ]
+    ],
+    "presets": [
+      "env",
+      "react"
+    ]
+  }
+}

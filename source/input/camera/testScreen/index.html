@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ESC Logo</title>
+    <style>
+.colorId {
+    height:15px;
+    max-height:15px;
+    width:15px;
+    max-width:15px;
+    display: inline-block;
+}
+
+#codeContainer {
+    background-color: black;
+    height: 9em ;
+    width: 30em ;
+    padding: 2em;
+    text-align: center;
+    display:inline-block;
+}
+
+.beer {
+    position:relative;
+    width: 28%;
+    top: 2.5%;
+    padding-top: 28%;
+    background-image:url(https://thebeergearstore.com/wp-content/uploads/2015/07/Bud-Light-50-Count-Sleeve-10oz-Plastic-Cups.jpg);
+    background-size: contain;
+}
+
+.newBeer {
+    position:fixed;
+    padding-top: 0;
+    font-size: 2em;
+    background-image:url(https://thebeergearstore.com/wp-content/uploads/2015/07/Bud-Light-50-Count-Sleeve-10oz-Plastic-Cups.jpg);
+    background-size: contain;
+}
+
+.shotFiredContainer {
+    position:fixed;
+}
+
+.shotFired {
+    transform: translate(-50%,-50%);
+    color: #550000;
+    font-size: 3em;
+}
+
+#logo {
+    width: 38%;
+    display:inline-block;
+}
+
+#colorBlocksCodeContainer {
+    position:relative;
+    top:4%;
+    background-color: black;
+    width: 28% ;
+    padding-top: 28% ;
+    display:inline-block;
+}
+#colorBlocksCode {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+}
+
+#colorBlocksCode2 {
+    position: fixed;
+    height: 5em;
+    width: 5em;
+    bottom: 0;
+    right: 0;
+}
+
+.colorIdH {
+    height:15px;
+    width:60px;
+    display: inline-block;
+    visibility: hidden;
+    display: none;
+}
+.colorIdV {
+    height:60px;
+    width:15px;
+    display: inline-block;
+    visibility: hidden;
+    display: none;
+}
+.player {
+    position: fixed;
+    display: inline-block;
+    border-width: 0.2vh;
+    border: black;
+    border-style: inset;
+    padding-right: 0.2em;
+    background-color: #00000080;
+    transition: .25s ease-in;
+    text-shadow: .05em .05em black;
+}
+
+.splat {
+    position: fixed;
+    display: inline-block;
+    z-index: -1;
+}
+
+    </style>
+    <script src="gameInstance.js"></script>
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.4.21.6.js"></script>
+    <script src="cameraCommon.js?v=1"></script>
+    <script src="colorCodes.js?v=1"></script>
+    <script>
+
+        let fontSizeScale = 1.0 ;
+
+        function resizeCode(f) {
+            fontSizeScale *= f ;
+            document.body.style.fontSize = fontSizeScale + "em";
+        }
+        document.addEventListener('keypress', (event) => {
+            if (event.metaKey) {
+                return ;
+            }
+            const keyName = event.key;
+            if (event.key === "=") {
+                resizeCode(1.1);
+            }
+            else if (event.key === "-") {
+                resizeCode(1/1.1);
+            }
+        });
+
+        players = {} ;
+
+        function onMessage(msg) {
+            let el ;
+            let playerId = msg.publisher ;
+            let player = players[playerId] ;
+            const playerShortId = playerId.slice(-10,-6);
+            const playerColor = "#"+playerId.slice(-6);
+            if (!player) {
+                el = document.createElement("div");
+                el.id = playerId ;
+                el.className = "player" ;
+                document.body.appendChild(el);
+                player = {element:el} ;
+                players[playerId] = player ;
+                el.style.color = playerColor ;
+                el.innerHTML = "&nwarr;" + playerShortId ;
+            }
+            else
+            {
+                el = player.element ;
+            }
+            player.lastMessage = msg.message ;
+            player.lastTimeToken = msg.timetoken ;
+            const codeRect = codeElem.getBoundingClientRect();
+            const targetSize = {
+                w: codeRect.width,
+                h: codeRect.height
+            };
+            const targetCenter = {
+                x: codeRect.left + targetSize.w/2,
+                y: codeRect.top + targetSize.h/2,
+            };
+            const aimOffset = {
+                x: 1280/2 - msg.message.x,
+                y: 720/2 - msg.message.y
+            } ;
+
+            const elSize = {
+                w: msg.message.size,
+                h: msg.message.size,
+            } ;
+
+            const positionScale = {
+                x: targetSize.w/ColorCodeWidth/elSize.w,
+                y: targetSize.h/ColorCodeHeight/elSize.h
+            };
+            const aimPosition = {
+                x: targetCenter.x + aimOffset.x * positionScale.x,
+                y: targetCenter.y + aimOffset.y * positionScale.y
+            };
+
+            el.style.left =  aimPosition.x + "px";
+            el.style.top =  aimPosition.y + "px";
+            el.style.fontSize = elSize.w + "px";
+
+            if (msg.message.event && msg.message.event === "fireButton") {
+                const shotElContainer = document.createElement("div");
+                shotElContainer.className = "shotFiredContainer";
+                shotElContainer.style.left = el.style.left ;
+                shotElContainer.style.top = el.style.top ;
+                const shotEl = document.createElement("div");
+                shotEl.className = "shotFired";
+                shotEl.innerHTML = "&#x1F48B;";
+                shotElContainer.appendChild(shotEl);
+                document.body.appendChild(shotElContainer);
+                setTimeout(function() {
+                    shotEl.remove();
+                    shotElContainer.remove();
+                },10000);
+            }
+            else if (msg.message.event && msg.message.event.startsWith('touch')) {
+                const touchPosition = msg.message.touchPosition ;
+
+                const touchOffset = {
+                    x : touchPosition.x - msg.message.x ,
+                    y : touchPosition.y - msg.message.y
+                };
+                const windowPosition = {
+                    x: targetCenter.x - elSize.w/2 + touchOffset.x*positionScale.x ,
+                    y: targetCenter.y - elSize.h/2 + touchOffset.y*positionScale.y
+                };
+                // This must be called before an element is added at point clicked, or the element found will always be the new element
+                const elementClicked = document.elementFromPoint(windowPosition.x,windowPosition.y) ;
+                console.log("Element clicked: ",elementClicked);
+
+                const touchEl = document.createElement("div");
+                touchEl.className = "splat" ;
+                document.body.appendChild(touchEl);
+                touchEl.style.color = playerColor ;
+                touchEl.innerHTML = "&maltese;" + playerShortId;
+                touchEl.style.left = windowPosition.x + "px" ;
+                touchEl.style.top = windowPosition.y + "px" ;
+
+                if (elementClicked === document.getElementById("coldBeerHere")) {
+                    const newBeer = elementClicked.cloneNode();
+
+                    newBeer.innerHTML = `<b style="background-color: black; position: relative; bottom: -1.5em;">${playerShortId}</b>`;
+                    const rect = elementClicked.getBoundingClientRect() ;
+//                    const computedStyle = window.getComputedStyle(elementClicked);
+//                    newBeer.style = computedStyle;
+                    newBeer.id = Date.now();
+                    newBeer.className = "newBeer";
+                    newBeer.style.position = "fixed";
+                    newBeer.style.left = rect.left.toFixed(1) + "px";
+                    newBeer.style.top = rect.top.toFixed(1) + "px";
+                    newBeer.style.width = rect.width.toFixed(1) +"px";
+                    newBeer.style.height = rect.height.toFixed(1) +"px";
+                    newBeer.style.color = playerColor ;
+                    console.log("bounding rect",rect);
+                    console.log("style",newBeer.style);
+                    console.log("newbeer",newBeer);
+                    //elementClicked.parentElement.appendChild(newBeer);
+                    document.body.appendChild(newBeer);
+                    console.log("newbeer",newBeer);
+
+                    setTimeout(function() {
+                        console.log("newbeer",newBeer);
+                        newBeer.style.transition = "3s";
+                        newBeer.style.left = (Math.random()*100)+"vw";
+                        newBeer.style.top = "80vh";
+                    },200);
+                    setTimeout(function() {
+                        newBeer.remove();
+                    },5000);
+                    setTimeout(function() {
+                        touchEl.remove();
+                    },100);
+                }
+                else if (elementClicked === document.getElementById("hideClicksQuick")) {
+                    setTimeout(function() {
+                        touchEl.remove();
+                    },200);
+                }
+                else if (elementClicked === document.getElementById("logo")) {
+                    elementClicked.style.transition = "1s";
+                    elementClicked.style.transform = "rotate(45deg)";
+                    setTimeout(function() {
+                        elementClicked.style.transform = "rotate(0deg)";
+                    },1000);
+
+                }
+                else {
+                    setTimeout(function() {
+                        touchEl.remove();
+                    },5000);
+                }
+            }
+
+        }
+
+        function createSubscriber() {
+            const pubnub = new PubNub({
+                publishKey : 'pub-c-b5184746-a1d8-4189-b45b-c33aee8785f6',
+                subscribeKey : 'sub-c-a5894506-e1f0-11e8-a197-eed1401c575e'
+            });
+            pubnub.addListener({
+                status: function(statusEvent) {
+                    if (statusEvent.category === "PNConnectedCategory") {
+                        // Do something when connected
+                    }
+                },
+                message: function(msg) {
+                    console.log("Message received: ",msg);
+                    onMessage(msg);
+                },
+                presence: function(presenceEvent) {
+                    console.log("presence message",presenceEvent);
+                }
+            });
+            console.log("Subscribing..");
+            pubnub.subscribe({
+                channels: [myChannelCode]
+            });
+            return pubnub ;
+        }
+        let subscriber = createSubscriber();
+
+    </script>
+</head>
+<body style="background-color: gray; text-align: center">
+<div style="color: white">
+    Channel: <span id="channelNumber" >Channel number here</span><br>
+    screen code: <span id="screenCount" >Screen count here</span>
+</div>
+<div id="codeContainer">
+    <img id="logo" src="esc-logo-web-small.png">&nbsp;<div
+        id="colorBlocksCodeContainer"><div id="colorBlocksCode"></div></div>&nbsp;&nbsp;<button id="coldBeerHere" class="beer"> </button>
+
+</div>
+<script>
+
+
+    let screenCount = 0 ;
+    let frameCount = 0 ;
+
+    const codeElem = document.getElementById("colorBlocksCode");
+    const channelNumberElem = document.getElementById("channelNumber");
+    const screenCountElem = document.getElementById("screenCount");
+
+    channelNumberElem.innerHTML = myChannelCode ;
+    function animationFrame() {
+        const period = 6 ;
+        if ((frameCount % period) === 1) {
+            const code = myChannelCode + (screenCount % ScreenCountMax) * ChannelMax ;
+            codeElem.style.visibility = "visible";
+            setCode(codeElem,code);
+            screenCountElem.innerHTML = (screenCount % ScreenCountMax).toString() ;
+            screenCount++;
+        } else if ((frameCount % period) === 0) {
+            //codeElem.style.visibility = "hidden";
+        }
+        frameCount++;
+        requestAnimationFrame(animationFrame);
+    }
+    requestAnimationFrame(animationFrame);
+
+</script>
+</body>
+</html>

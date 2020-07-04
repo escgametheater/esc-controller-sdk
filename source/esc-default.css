@@ -1,0 +1,132 @@
+.visible {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 177ms ease-out;
+}
+
+.hidden {
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s 250ms, opacity 250ms ease-in-out;
+}
+div {
+    font-size: 100%;
+}
+img
+{
+    -webkit-user-select:none; /* Prevent image selection popups */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
+    -webkit-touch-callout:none;
+}
+#root {
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
+}
+
+.bottom-visible {
+    position: absolute;
+    bottom:0;
+}
+.right-visible {
+    position: absolute;
+    right:0;
+}
+.top-visible {
+    position: absolute;
+    top:0;
+}
+.left-visible {
+    position: absolute;
+    left:0;
+}
+
+.tattooSize {
+    width:6.25em;
+    height:6.25em;
+}
+
+.tattooBarContainer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: black;
+}
+
+.tattooBarContainer .escLogo {
+    width: 7%;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.tattooBarContainer .spacer {
+    width: 87%;
+    height: 4.5em;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.tattooBar {
+    width: 6%;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.tattooBar .tattooSize {
+    width: 100%;
+    height: 100%;
+    float: right;
+}
+
+.network-disconnect {
+    position: absolute;
+    top: 50% ;
+    left: 50% ;
+    -webkit-transform: translateY(-50%) translateX(-50%);
+    -ms-transform: translateY(-50%) translateX(-50%);
+    transform: translateY(-50%) translateX(-50%);
+    padding: 1em;
+    background-color: #222222;
+    color: #ba89b6;
+}
+
+.pubnub-inactive {
+    text-decoration: line-through;
+}
+
+.websocket-inactive {
+    text-decoration: line-through;
+}
+
+.pubnub-status {
+    position: fixed;
+    top: 0;
+    right : 3em;
+}
+
+.websocket-status {
+    position: fixed;
+    top: 0;
+    right : 5em;
+}
+
+#gofullscreen {
+    position: fixed;
+    top:0;
+    left:0;
+    z-index:5;
+    font-size:0em;
+    width:5vmax;
+    height:20vmax;
+    background-image: url("images/swipe_up.gif");
+    background-repeat: no-repeat;
+    background-size: 100%;
+}
